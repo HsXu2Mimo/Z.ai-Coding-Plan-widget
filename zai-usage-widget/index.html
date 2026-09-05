@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Z.ai Coding Plan 用量面板</title>
+<style>
+  :root {
+    --bg: #0b0f1a;
+    --panel: rgba(255, 255, 255, .045);
+    --panel-solid: #131a2b;
+    --border: rgba(255, 255, 255, .09);
+    --text: #e8ecf4;
+    --muted: #8b93a7;
+    --accent: #7c9aff;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --ring-track: rgba(255, 255, 255, .08);
+    --radius: 18px;
+    --shadow: 0 10px 30px rgba(0, 0, 0, .35);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -apple-system, sans-serif;
+    background:
+      radial-gradient(1100px 600px at 12% -8%, rgba(92, 124, 250, .16), transparent 60%),
+      radial-gradient(900px 500px at 105% 8%, rgba(52, 211, 153, .08), transparent 55%),
+      radial-gradient(700px 500px at 50% 115%, rgba(168, 85, 247, .10), transparent 60%),
+      var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  #app { max-width: 1180px; margin: 0 auto; padding: 22px 20px 30px; }
+
+  /* ---------- header ---------- */
+  header {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .logo {
+    width: 34px; height: 34px; border-radius: 10px; flex: none;
+    background: linear-gradient(135deg, #5c7cfa, #9b6cff);
+    display: grid; place-items: center; font-weight: 700; font-size: 15px;
+    box-shadow: 0 4px 14px rgba(92, 124, 250, .4);
+  }
+  h1 { font-size: 17px; margin: 0; font-weight: 600; letter-spacing: .3px; }
+  .subtitle { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .spacer { flex: 1; }
+  .btn {
+    border: 1px solid var(--border); background: var(--panel); color: var(--text);
+    padding: 7px 13px; border-radius: 10px; font-size: 13px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; transition: .15s;
+    backdrop-filter: blur(8px);
+  }
+  .btn:hover { background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .18); }
+  .btn.primary { background: linear-gradient(135deg, #5c7cfa, #7c5cff); border-color: transparent; }
+  .btn.primary:hover { filter: brightness(1.12); }
+  .btn.icon { padding: 7px 9px; }
+  .btn[disabled] { opacity: .5; cursor: default; }
+  .spin { animation: spin 1s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  select.btn { appearance: none; padding-right: 10px; }
+  select.btn option { background: var(--panel-solid); color: var(--text); }
+
+  /* ---------- cards grid ---------- */
+  #cards {
+    display: grid; gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px 18px 14px; box-shadow: var(--shadow); backdrop-filter: blur(10px);
+    display: flex; flex-direction: column; gap: 14px; min-width: 0;
+    animation: rise .35s ease both;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; } }
+  .card-head { display: flex; align-items: center; gap: 8px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .dot.ok { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .dot.err { background: var(--red); box-shadow: 0 0 8px var(--red); }
+  .dot.load { background: var(--amber); box-shadow: 0 0 8px var(--amber); animation: pulse 1s ease infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .card-title { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge {
+    font-size: 10.5px; padding: 3px 8px; border-radius: 999px; flex: none;
+    border: 1px solid var(--border); color: var(--muted); letter-spacing: .3px;
+  }
+  .badge.plan { color: #b9c6ff; border-color: rgba(124, 154, 255, .4); background: rgba(124, 154, 255, .1); }
+  .badge.demo { color: #ffd9a8; border-color: rgba(251, 191, 36, .4); background: rgba(251, 191, 36, .1); }
+
+  /* ---------- ring ---------- */
+  .ring-row { display: flex; align-items: center; gap: 16px; }
+  .ring-wrap { position: relative; width: 112px; height: 112px; flex: none; }
+  .ring-wrap svg { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--ring-track); stroke-width: 9; }
+  .ring-fg {
+    fill: none; stroke-width: 9; stroke-linecap: round;
+    transition: stroke-dashoffset .8s cubic-bezier(.22, 1, .36, 1), stroke .4s;
+  }
+  .ring-center {
+    position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+  }
+  .ring-pct { font-size: 24px; font-weight: 700; line-height: 1; }
+  .ring-pct small { font-size: 13px; font-weight: 600; color: var(--muted); }
+  .ring-cap { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .ring-meta { min-width: 0; }
+  .ring-meta .k { font-size: 13.5px; font-weight: 600; margin-bottom: 6px; }
+  .reset-line { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 5px; margin-top: 4px; }
+  .reset-line b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* ---------- bars ---------- */
+  .bars { display: flex; flex-direction: column; gap: 11px; }
+  .bar-item .bar-top {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 12.5px; margin-bottom: 5px; gap: 8px;
+  }
+  .bar-top .name { color: var(--muted); }
+  .bar-top .val { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .bar-track {
+    height: 7px; border-radius: 99px; background: var(--ring-track); overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%; border-radius: 99px; width: 0;
+    transition: width .8s cubic-bezier(.22, 1, .36, 1), background .4s;
+  }
+  .c-ok { color: var(--green); } .c-warn { color: var(--amber); } .c-danger { color: var(--red); }
+  .bg-ok { background: linear-gradient(90deg, #2dd4a0, #34d399); }
+  .bg-warn { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+  .bg-danger { background: linear-gradient(90deg, #ef4444, #f87171); }
+  .st-ok { stroke: var(--green); } .st-warn { stroke: var(--amber); } .st-danger { stroke: var(--red); }
+
+  /* ---------- models ---------- */
+  .models { border-top: 1px dashed var(--border); padding-top: 11px; }
+  .models .sec-title { font-size: 11.5px; color: var(--muted); margin-bottom: 8px; letter-spacing: .4px; }
+  .model-row { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-bottom: 6px; }
+  .model-row .m-name { width: 110px; flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #c6cede; }
+  .model-row .m-bar { flex: 1; display: flex; height: 5px; border-radius: 99px; background: var(--ring-track); overflow: hidden; }
+  .model-row .m-fill { display: block; height: 100%; background: linear-gradient(90deg, #5c7cfa, #9b6cff); border-radius: 99px; }
+  .model-row .m-val { width: 74px; flex: none; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .card-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11px; color: var(--muted); margin-top: auto;
+  }
+  .err-box {
+    background: rgba(248, 113, 113, .08); border: 1px solid rgba(248, 113, 113, .25);
+    border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #fca5a5; line-height: 1.6;
+  }
+  .err-box code { background: rgba(255,255,255,.08); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+
+  .empty {
+    grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: var(--muted);
+    border: 1px dashed var(--border); border-radius: var(--radius); font-size: 14px; line-height: 2;
+  }
+
+  footer {
+    margin-top: 20px; font-size: 11.5px; color: var(--muted);
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  }
+  footer a { color: #9db2ff; text-decoration: none; }
+
+  /* ---------- drawer ---------- */
+  #mask {
+    position: fixed; inset: 0; background: rgba(0, 0, 0, .5); backdrop-filter: blur(2px);
+    opacity: 0; pointer-events: none; transition: .25s; z-index: 40;
+  }
+  #mask.open { opacity: 1; pointer-events: auto; }
+  #drawer {
+    position: fixed; top: 0; right: -430px; width: 410px; max-width: 94vw; height: 100vh;
+    background: var(--panel-solid); border-left: 1px solid var(--border); z-index: 50;
+    transition: right .28s cubic-bezier(.22, 1, .36, 1); display: flex; flex-direction: column;
+    box-shadow: -12px 0 40px rgba(0, 0, 0, .4);
+  }
+  #drawer.open { right: 0; }
+  .drawer-head {
+    padding: 18px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .drawer-head h2 { font-size: 15px; margin: 0; }
+  .drawer-body { flex: 1; overflow-y: auto; padding: 16px 20px 30px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .field input, .field select {
+    width: 100%; padding: 9px 11px; border-radius: 9px; font-size: 13px;
+    background: rgba(255,255,255,.05); border: 1px solid var(--border); color: var(--text);
+    outline: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field select option { background: var(--panel-solid); }
+  .hint { font-size: 11px; color: var(--muted); line-height: 1.7; margin-top: 6px; }
+  .hint a { color: #9db2ff; }
+  .acct {
+    border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 12px;
+    background: rgba(255,255,255,.03); position: relative;
+  }
+  .acct .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .acct .row3 { display: grid; grid-template-columns: 1.2fr 1.6fr auto; gap: 8px; margin-top: 8px; }
+  .acct .del {
+    align-self: end; border: 1px solid rgba(248,113,113,.3); background: rgba(248,113,113,.08);
+    color: #fca5a5; border-radius: 8px; padding: 8px 10px; cursor: pointer; font-size: 12px;
+  }
+  .acct .del:hover { background: rgba(248,113,113,.18); }
+  .sec-label {
+    font-size: 12px; color: #9db2ff; letter-spacing: 1px; margin: 20px 0 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .sec-label::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+  .drawer-foot { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; }
+  .drawer-foot .btn { flex: 1; justify-content: center; padding: 10px; }
+
+  /* ---------- toast ---------- */
+  #toast {
+    position: fixed; bottom: 26px; left: 50%; transform: translate(-50%, 20px);
+    background: #232c44; border: 1px solid var(--border); color: var(--text);
+    padding: 10px 18px; border-radius: 12px; font-size: 13px; opacity: 0;
+    transition: .3s; z-index: 60; pointer-events: none; box-shadow: var(--shadow);
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ---------- compact 模式 (?compact=1) ---------- */
+  body.compact #app { padding: 12px; }
+  body.compact header { margin-bottom: 10px; }
+  body.compact h1 { font-size: 14px; }
+  body.compact .subtitle { display: none; }
+  body.compact #cards { grid-template-columns: 1fr; gap: 10px; }
+  body.compact .card { padding: 12px; gap: 10px; }
+  body.compact .ring-wrap { width: 84px; height: 84px; }
+  body.compact .ring-pct { font-size: 18px; }
+  body.compact .models { display: none; }
+  body.compact footer { display: none; }
+
+  @media (max-width: 480px) {
+    .ring-row { flex-direction: column; text-align: center; }
+    .reset-line { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">Z</div>
+    <div>
+      <h1>Z.ai Coding Plan 用量面板</h1>
+      <div class="subtitle" id="subtitle">多套餐 / 多账号用量一览</div>
+    </div>
+    <div class="spacer"></div>
+    <select class="btn" id="refreshSel" title="自动刷新间隔">
+      <option value="0">手动刷新</option>
+      <option value="1">每 1 分钟</option>
+      <option value="5" selected>每 5 分钟</option>
+      <option value="15">每 15 分钟</option>
+      <option value="30">每 30 分钟</option>
+    </select>
+    <button class="btn primary" id="refreshBtn">⟳ 刷新</button>
+    <button class="btn icon" id="settingsBtn" title="设置">⚙</button>
+  </header>
+
+  <main id="cards"></main>
+
+  <footer>
+    <span id="footLeft">—</span>
+    <span>接口:<code>GET /api/monitor/usage/quota/limit</code> · 数据仅供参考,以 Z.ai 控制台为准</span>
+  </footer>
+</div>
+
+<div id="mask"></div>
+<aside id="drawer">
+  <div class="drawer-head">
+    <h2>⚙ 设置</h2>
+    <button class="btn icon" id="closeDrawer">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="sec-label">账号 / 套餐</div>
+    <div id="acctList"></div>
+    <button class="btn" id="addAcct" style="width:100%;justify-content:center;">+ 添加账号</button>
+    <div class="hint">
+      账号 Key 保存时自动送入本机加密库(DPAPI 加密,磁盘无明文),浏览器里只保留加密引用,不会上传第三方。
+      Key 获取:全球站 <a href="https://z.ai/manage-apikey/apikey-list" target="_blank">z.ai 控制台</a>,
+      国内站 <a href="https://bigmodel.cn/console/usercenter-apikeys" target="_blank">bigmodel.cn 控制台</a>。
+    </div>
+
+    <div class="sec-label">网络</div>
+    <div class="field">
+      <label>CORS 代理地址(可选)</label>
+      <input id="cfgProxy" placeholder="例如 http://127.0.0.1:8787/?url={url}">
+      <div class="hint">
+        一般无需手动配置:由 <code>http://127.0.0.1:8788/?live=1</code> 打开时会自动填好。
+        也可以用任何 <code>?url=</code> 风格代理,地址里的 <code>{url}</code> 会被替换成编码后的接口地址。
+        Key 留空时,本地服务会自动注入 <code>key.txt</code> 中的密钥。
+      </div>
+    </div>
+
+    <div class="sec-label">API Key(加密存储在本机)</div>
+    <div class="field">
+      <label id="keyStatus">状态:检测中…</label>
+      <div style="display:flex;gap:8px;">
+        <input id="cfgKeyInput" type="password" placeholder="粘贴 API Key,保存后加密写入本机" autocomplete="off" style="flex:1;">
+        <button class="btn" id="saveKeyBtn">保存</button>
+      </div>
+      <div class="hint">
+        密钥经 Windows DPAPI 加密写入 <code>key.enc</code>(绑定当前 Windows 用户,磁盘无明文),
+        由本地服务注入请求头,所有浏览器通用。
+        优先级:<code>ZAI_API_KEY 环境变量 &gt; key.enc &gt; key.txt</code>。
+      </div>
+    </div>
+
+    <div class="sec-label">其他</div>
+    <div class="field">
+      <label><input type="checkbox" id="cfgDemo" style="width:auto;margin-right:6px;">演示模式(无 Key 时展示示例数据)</label>
+    </div>
+  </div>
+  <div class="drawer-foot">
+    <button class="btn" id="cancelCfg">取消</button>
+    <button class="btn primary" id="saveCfg">保存并刷新</button>
+  </div>
+</aside>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+/* ================= 常量与配置 ================= */
+
+const LS_KEY = 'zai-usage-widget-config-v1';
+
+const PLATFORMS = {
+  zai:   { name: 'Z.ai 全球站', base: 'https://api.z.ai' },
+  zhipu: { name: '智谱国内站',  base: 'https://open.bigmodel.cn' },
+};
+
+const QUOTA_PATH  = '/api/monitor/usage/quota/limit';
+const MODELS_PATH = '/api/monitor/usage/model-usage';
+
+const TOKENS_LIMIT = 'TOKENS_LIMIT';
+const FIVE_HOUR = { unit: 3, number: 5 };
+const WEEKLY    = { unit: 6, number: 1 };
+const FIVE_HOUR_LABEL = 'Token usage(5 Hour)';
+const WEEKLY_LABEL    = 'Token usage(Weekly)';
+
+// 套餐预设(公开资料整理,2026-09 查询):
+// - prompts 额度为官方数字(docs.z.ai/devpack/notice/usage-revision,2026-07-30 公告)
+// - Token 总量为社区估算(非官方):Pro 40M/5h(opencode-glm-quota 默认值)、
+//   Lite ≈27M(社区按 40M 基准推算)、Max 按 prompts 比例 ×4;周额度 ≈ 5h × 5
+const PLAN_PRESETS = {
+  lite: { name: 'Lite', levelMatch: /lite/i,  prompts5h: 80,   promptsWeek: 400,
+          tok5hM: 27,  tokWeekM: 135 },
+  pro:  { name: 'Pro',  levelMatch: /pro/i,   prompts5h: 400,  promptsWeek: 2000,
+          tok5hM: 40,  tokWeekM: 200 },
+  max:  { name: 'Max',  levelMatch: /max/i,   prompts5h: 1600, promptsWeek: 8000,
+          tok5hM: 160, tokWeekM: 800 },
+};
+
+// 套餐识别:账号手动指定优先,否则按接口返回的 level 字段匹配
+function detectPlan(acct, q) {
+  if (acct.plan && PLAN_PRESETS[acct.plan]) return acct.plan;
+  const level = (q && q.level) || '';
+  if (level) for (const [k, p] of Object.entries(PLAN_PRESETS)) {
+    if (p.levelMatch.test(level)) return k;
+  }
+  return null;
+}
+
+const isCompact = new URLSearchParams(location.search).has('compact');
+if (isCompact) document.body.classList.add('compact');
+const LIVE_MODE = new URLSearchParams(location.search).has('live');
+
+// ?live=1 且尚未配置账号时,自动创建真实账号卡片(Key 由本地服务注入)
+function ensureLiveSetup() {
+  if (!LIVE_MODE || config.accounts.length) return;
+  config.accounts = [{ id: 'live-' + Date.now().toString(36), label: 'Z.ai 账号', platform: 'zai', key: '' }];
+  if (!config.proxyUrl) config.proxyUrl = 'http://127.0.0.1:8788/proxy?url={url}';
+  saveConfig();
+}
+
+let config = loadConfig();
+let timer = null, tickTimer = null;
+let accountsState = new Map();   // id -> {status, quota, models, error, updatedAt, nextRefreshAt}
+
+function genId() {
+  return 'acct-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+}
+
+function loadConfig() {
+  const def = { proxyUrl: '', refreshMin: 5, demo: true, accounts: [] };
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const merged = Object.assign(def, JSON.parse(raw));
+      // 兼容旧数据:无 id 的账号补一个,否则多账号会共用同一状态槽
+      merged.accounts = (merged.accounts || []).map(a =>
+        a && a.id ? a : Object.assign({}, a, { id: genId() }));
+      return merged;
+    }
+  } catch (e) { /* file:// 下可能不可用 */ }
+  return def;
+}
+function saveConfig() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(config)); } catch (e) {}
+}
+ensureLiveSetup();
+
+/* ================= 工具函数 ================= */
+
+const $ = sel => document.querySelector(sel);
+const num = v => (typeof v === 'number' && Number.isFinite(v)) ? v : null;
+const clampPct = v => Math.max(0, Math.min(100, num(v) || 0));
+const firstNum = (...vals) => { for (const v of vals) { const n = num(v); if (n !== null) return n; } return 0; };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function fmtTokens(n) {
+  if (!n) return '0';
+  let s;
+  if (n >= 1e9) s = (n / 1e9).toFixed(2);
+  else if (n >= 1e6) s = (n / 1e6).toFixed(2);
+  else if (n >= 1e3) s = (n / 1e3).toFixed(1);
+  else return String(Math.round(n));
+  return s.replace(/\.?0+$/, '') + (n >= 1e9 ? 'B' : n >= 1e6 ? 'M' : 'K');
+}
+function fmtCountdown(ms) {
+  if (ms == null || ms <= 0) return '已重置';
+  const m = Math.floor(ms / 60000);
+  if (m < 1) return '1 分钟内';
+  const h = Math.floor(m / 60), d = Math.floor(h / 24);
+  if (d >= 1) return `${d} 天 ${h % 24} 小时`;
+  if (h >= 1) return `${h} 小时 ${m % 60} 分`;
+  return `${m} 分钟`;
+}
+function pctClass(p) { return p >= 85 ? 'danger' : p >= 60 ? 'warn' : 'ok'; }
+
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+/* ================= 接口解析 ================= */
+
+function unwrap(json) {
+  return (json && typeof json === 'object' && json.data && typeof json.data === 'object') ? json.data : (json || {});
+}
+
+// 从响应中探测套餐有效期(字段名官方未文档化,按常见命名防御性匹配)
+function findExpiry(d) {
+  const re = /expire|endtime|end_time|validuntil|valid_until|deadline|duetime|due_time/i;
+  const objs = [d, ...(Array.isArray(d.limits) ? d.limits : [])];
+  for (const obj of objs) {
+    if (!obj || typeof obj !== 'object') continue;
+    for (const [k, v] of Object.entries(obj)) {
+      const t = num(v);
+      if (re.test(k) && t && t > 946684800000) return t; // > 2000-01-01 的毫秒时间戳
+    }
+  }
+  return null;
+}
+
+// 解析 quota/limit 响应 → { level, fiveHour, weekly, mcp, extra[] }
+function parseQuota(json) {
+  const d = unwrap(json);
+  const out = {
+    level: typeof d.level === 'string' && d.level ? d.level : null,
+    fiveHour: null, weekly: null, mcp: null, extra: [],
+    expireAt: findExpiry(d),
+  };
+  const limits = Array.isArray(d.limits) ? d.limits : [];
+  for (const l of limits) {
+    if (!l || typeof l !== 'object') continue;
+    const unit = num(l.unit), n = num(l.number);
+    const rawType = l.rawType || l.type;
+
+    if (l.type === 'TIME_LIMIT' || rawType === 'TIME_LIMIT') {
+      const mUsed = firstNum(l.currentValue, l.used), mTotal = firstNum(l.usage, l.total);
+      out.mcp = {
+        percentage: clampPct(l.percentage),
+        used: mUsed > 0 ? mUsed : null,
+        total: mTotal > 0 ? mTotal : null,
+        details: Array.isArray(l.usageDetails) ? l.usageDetails : [],
+        nextResetTime: num(l.nextResetTime),
+      };
+      continue;
+    }
+    if (l.type === TOKENS_LIMIT || rawType === TOKENS_LIMIT || num(l.percentage) !== null) {
+      let kind = 'custom';
+      if ((unit === FIVE_HOUR.unit && n === FIVE_HOUR.number) || l.type === FIVE_HOUR_LABEL) kind = '5h';
+      else if ((unit === WEEKLY.unit && n === WEEKLY.number) || l.type === WEEKLY_LABEL) kind = 'weekly';
+      const item = {
+        kind,
+        label: kind === 'custom'
+          ? `Token 窗口 (unit=${unit ?? '?'}, number=${n ?? '?'})`
+          : null,
+        percentage: clampPct(l.percentage),
+        nextResetTime: num(l.nextResetTime),
+        used: (() => { const v = firstNum(l.currentValue, l.used); return v > 0 ? v : null; })(),
+        total: (() => { const v = firstNum(l.total, l.limit, l.limitValue, l.maxValue); return v > 0 ? v : null; })(),
+      };
+      if (kind === 'custom') out.extra.push(item);
+      else if (kind === '5h') { if (!out.fiveHour) out.fiveHour = item; }
+      else if (kind === 'weekly') { if (!out.weekly) out.weekly = item; }
+    }
+  }
+  return out;
+}
+
+// model-usage 响应字段官方未文档化,这里做防御性解析
+function parseModelUsage(json) {
+  const d = unwrap(json);
+  let arr = null;
+  for (const k of ['modelUsages', 'models', 'usageDetails', 'items', 'list']) {
+    if (Array.isArray(d[k])) { arr = d[k]; break; }
+  }
+  if (!arr) for (const v of Object.values(d)) {
+    if (Array.isArray(v) && v.length && typeof v[0] === 'object') { arr = v; break; }
+  }
+  if (!arr) return [];
+  return arr.map(it => {
+    const tokens = firstNum(it.totalTokens, (num(it.inputTokens) || 0) + (num(it.outputTokens) || 0),
+                            it.tokens, it.usage, it.currentValue);
+    return { model: it.modelCode || it.model || it.modelName || it.name || '?', tokens };
+  }).filter(x => x.tokens > 0).sort((a, b) => b.tokens - a.tokens).slice(0, 6);
+}
+
+/* ================= 网络请求 ================= */
+
+function applyProxy(url) {
+  const p = (config.proxyUrl || '').trim();
+  if (!p) return url;
+  if (p.includes('{url}')) return p.replace('{url}', encodeURIComponent(url));
+  return p.replace(/\/?$/, '/') + '?url=' + encodeURIComponent(url); // corsproxy.io 风格
+}
+
+async function apiGet(base, path, acct, query) {
+  const url = base + path + (query ? '?' + query : '');
+  const headers = { 'Accept-Language': 'zh-CN,zh;q=0.9,en', 'Content-Type': 'application/json' };
+  if (acct.keyRef) headers['X-Key-Ref'] = acct.keyRef;       // 加密库引用,由本地服务解密注入
+  else if (acct.key) headers['Authorization'] = acct.key;     // 留空时由本地服务注入全局密钥
+  const res = await fetch(applyProxy(url), { headers });
+  if (res.status === 401 || res.status === 403) throw new Error('鉴权失败(' + res.status + '),请检查 API Key');
+  if (res.status === 429) throw new Error('请求过于频繁(429),请稍后再试');
+  if (!res.ok) throw new Error('接口返回 HTTP ' + res.status);
+  const json = await res.json();
+  if (json && json.success === false) throw new Error(json.msg ? `${json.msg} (code ${json.code})` : `接口返回错误 code=${json.code}`);
+  return json;
+}
+
+function timeWindowQuery() {
+  const pad = x => String(x).padStart(2, '0');
+  const fmt = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:00:00`;
+  const end = new Date(), start = new Date(Date.now() - 24 * 3600 * 1000);
+  return `startTime=${encodeURIComponent(fmt(start))}&endTime=${encodeURIComponent(fmt(end))}`;
+}
+
+/* ================= 演示数据 ================= */
+
+function demoQuota(p5, pw, pm, resetHours, level) {
+  return { data: {
+    level,
+    limits: [
+      { type: TOKENS_LIMIT, unit: 3, number: 5, percentage: p5,
+        nextResetTime: Date.now() + resetHours * 3600e3 },
+      { type: WEEKLY_LABEL, rawType: TOKENS_LIMIT, unit: 6, number: 1,
+        percentage: pw, nextResetTime: nextMonday() },
+      { type: 'TIME_LIMIT', percentage: pm, currentValue: pm * 4e5, usage: 5e7,
+        usageDetails: [{ modelCode: 'glm-4.6', usage: Math.round(pm * 3e5) },
+                       { modelCode: 'glm-4.5-air', usage: Math.round(pm * 1e5) }],
+        nextResetTime: nextMonth() },
+    ],
+  }};
+}
+function nextMonday() {
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7));
+  return d.getTime();
+}
+function nextMonth() {
+  const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime();
+}
+function demoModels(base) {
+  const mk = (model, mult) => ({ model, tokens: Math.round(base * mult) });
+  return [mk('glm-4.6', 1), mk('glm-4.5-air', .42), mk('glm-4.6v', .18)];
+}
+
+function demoStateFor(acct, drift) {
+  const d = (drift || 0);
+  if (acct.id === 'demo-lite')
+    return { quota: parseQuota(demoQuota(76 + d, 42 + d, 7, 1.6 + Math.random() * 2, 'GLM Coding Lite')),
+             models: demoModels(9.2e6) };
+  if (acct.id === 'demo-pro')
+    return { quota: parseQuota(demoQuota(38 + d, 21 + d, 12, 2.2 + Math.random() * 2, 'GLM Coding Pro')),
+             models: demoModels(2.4e7) };
+  return { quota: parseQuota(demoQuota(11 + d, 6 + d, 3, 3.4 + Math.random() * 1.4, 'GLM Coding Max')),
+           models: demoModels(4.1e7) };
+}
+
+/* ================= 渲染 ================= */
+
+function ringSvg(p) {
+  const R = 50, C = 2 * Math.PI * R;
+  const off = C * (1 - Math.min(p, 100) / 100);
+  return `<div class="ring-wrap">
+    <svg width="112" height="112" viewBox="0 0 112 112">
+      <circle class="ring-bg" cx="56" cy="56" r="${R}"></circle>
+      <circle class="ring-fg st-${pctClass(p)}" cx="56" cy="56" r="${R}"
+        stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"></circle>
+    </svg>
+    <div class="ring-center">
+      <div>
+        <div class="ring-pct">${p.toFixed(p < 10 && p > 0 ? 1 : 0)}<small>%</small></div>
+        <div class="ring-cap">5 小时用量</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// 已用/总量 文本:优先接口返回的真实数值,否则按上限×百分比换算(标 ≈)
+function pairFor(item, overrideTotal) {
+  if (!item) return null;
+  const total = item.total || (num(overrideTotal) > 0 ? overrideTotal : null);
+  if (!total) return null;
+  const estimated = item.used == null;
+  const used = estimated ? Math.round(item.percentage / 100 * total) : item.used;
+  return `${estimated ? '≈' : ''}${fmtTokens(used)} / ${fmtTokens(total)}`;
+}
+
+function barHtml(label, p, resetMs, pair) {
+  const cls = pctClass(p);
+  const reset = resetMs != null ? `<span class="reset-line">↻ <b>${fmtCountdown(resetMs - Date.now())}</b>后重置</span>` : '';
+  return `<div class="bar-item">
+    <div class="bar-top"><span class="name">${esc(label)} ${reset}</span>
+      <span class="val c-${cls}">${pair ? pair + ' · ' : ''}${p.toFixed(1)}%</span></div>
+    <div class="bar-track"><div class="bar-fill bg-${cls}" data-w="${Math.min(p, 100)}"></div></div>
+  </div>`;
+}
+
+// 有效期行:手动设置优先,其次取接口自动探测到的字段(错误态也可显示手动值)
+function expiryLineHtml(acct, q) {
+  const expiryMs = acct.expireDate ? new Date(acct.expireDate + 'T23:59:59').getTime()
+                 : ((q && q.expireAt) || null);
+  if (!expiryMs) return '';
+  const days = Math.ceil((expiryMs - Date.now()) / 86400e3);
+  const cls = days < 7 ? 'danger' : days <= 30 ? 'warn' : 'ok';
+  const rel = days >= 0 ? `剩 ${days} 天` : `已过期 ${-days} 天`;
+  return `<div class="reset-line">📅 有效期至 <b>${new Date(expiryMs).toLocaleDateString('zh-CN')}</b>` +
+    ` <span class="c-${cls}">${rel}</span></div>`;
+}
+
+function cardHtml(acct, st) {
+  const head = `<div class="card-head">
+      <span class="dot ${st.status}"></span>
+      <span class="card-title">${esc(acct.label)}</span>
+      ${st.quota && st.quota.level ? `<span class="badge plan">${esc(st.quota.level)}</span>` : ''}
+      ${acct.demo ? '<span class="badge demo">DEMO</span>' : ''}
+    </div>`;
+
+  if (st.status === 'error') {
+    const msg = st.error || '未知错误';
+    const corsHint = /Failed to fetch|NetworkError|Load failed/i.test(msg)
+      ? '<br>可能是浏览器 CORS 拦截:运行本目录的 <code>python proxy.py</code>,并通过 <code>http://127.0.0.1:8788/?live=1</code> 打开面板。'
+      : '';
+    const authHint = /Authorization|Authentication|token is empty|鉴权|身份验证/i.test(msg) && !acct.key
+      ? '<br>未检测到 API Key:点右上角 <code>⚙ 设置</code>,在"API Key(加密存储在本机)"里粘贴并保存即可。'
+      : '';
+    return head + `<div class="err-box">⚠ ${esc(msg)}${corsHint}${authHint}</div>${expiryLineHtml(acct, null)}
+      <div class="card-foot"><span>刷新失败</span><span>${st.updatedAt || ''}</span></div>`;
+  }
+
+  const q = st.quota || {};
+  const p5 = q.fiveHour ? q.fiveHour.percentage : 0;
+  const reset5 = q.fiveHour && q.fiveHour.nextResetTime ? q.fiveHour.nextResetTime : null;
+
+  // 总量来源:接口真实值 > 账号手动上限 > 套餐预设估算 > 40M 默认
+  const planKey = detectPlan(acct, q);
+  const preset = planKey ? PLAN_PRESETS[planKey] : null;
+  const total5Override = num(acct.tokenLimit5hM) ? acct.tokenLimit5hM * 1e6
+                       : (preset ? preset.tok5hM * 1e6 : null);
+  const totalWOverride = num(acct.tokenLimit5wM) ? acct.tokenLimit5wM * 1e6
+                       : (preset ? preset.tokWeekM * 1e6 : null);
+
+  let bars = '';
+  if (q.weekly) bars += barHtml('每周 Token 用量', q.weekly.percentage, q.weekly.nextResetTime,
+    pairFor(q.weekly, totalWOverride));
+  if (q.mcp)    bars += barHtml('MCP 月度用量', q.mcp.percentage, q.mcp.nextResetTime, pairFor(q.mcp));
+  for (const x of (q.extra || [])) bars += barHtml(x.label, x.percentage, x.nextResetTime, pairFor(x));
+  if (!bars) bars = '<div class="hint" style="margin:0;">接口未返回窗口配额数据</div>';
+
+  let models = '';
+  if (st.models && st.models.length) {
+    const max = st.models[0].tokens;
+    models = `<div class="models"><div class="sec-title">近 24h 模型用量</div>` +
+      st.models.map(m => `<div class="model-row">
+        <span class="m-name">${esc(m.model)}</span>
+        <span class="m-bar"><span class="m-fill" style="width:${(m.tokens / max * 100).toFixed(1)}%"></span></span>
+        <span class="m-val">${fmtTokens(m.tokens)}</span>
+      </div>`).join('') + '</div>';
+  }
+
+  const noKeyReal = currentAccounts().filter(a => !a.demo && !a.key).length;
+  const footNote = (!acct.demo && !acct.key && noKeyReal > 1)
+    ? '⚠ 未填 Key,与其他空 Key 账号共用本地注入的同一凭证(数据显示相同)'
+    : (acct.note || '');
+
+  // 有效期:手动设置优先,其次取接口自动探测到的字段
+  const expiryLine = expiryLineHtml(acct, q);
+
+  // 5h 窗口数字:接口无绝对值时按 账号上限 > 套餐预设 > 40M 默认 换算
+  const total5 = (q.fiveHour && q.fiveHour.total) || total5Override || 4e7;
+  const used5 = (q.fiveHour && q.fiveHour.used != null) ? q.fiveHour.used
+              : Math.round(p5 / 100 * total5);
+  const pair5 = `${fmtTokens(used5)} / ${fmtTokens(total5)}`;
+  const planLine = preset
+    ? `<div class="reset-line">📋 ${preset.name} 额度:约 ${preset.prompts5h} prompts/5h · ${preset.promptsWeek}/周</div>`
+    : '';
+
+  return head + `
+    <div class="ring-row">
+      ${ringSvg(p5)}
+      <div class="ring-meta">
+        <div class="k">5 小时窗口 ${pctClass(p5) === 'danger' ? '<span class="c-danger">· 快用完了</span>' : ''}</div>
+        <div class="reset-line">🔢 <b>${pair5.split(' / ')[0]}</b> / ${pair5.split(' / ')[1]} token${(q.fiveHour && q.fiveHour.used != null) ? '' : ' <span title="按公开资料的套餐上限估算">≈</span>'}</div>
+        ${planLine}
+        <div class="reset-line">↻ <b data-reset="${reset5 ?? ''}">${reset5 ? fmtCountdown(reset5 - Date.now()) : '—'}</b> 后重置</div>
+        ${expiryLine}
+        <div class="reset-line">🕐 更新于 ${st.updatedAt || '—'}</div>
+      </div>
+    </div>
+    <div class="bars">${bars}</div>
+    ${models}
+    <div class="card-foot"><span>${esc(footNote)}</span><span></span></div>`;
+}
+
+function renderAll() {
+  const wrap = $('#cards');
+  const list = currentAccounts();
+  if (!list.length) {
+    wrap.innerHTML = `<div class="empty">还没有添加账号。<br>
+      点击右上角 <b>⚙ 设置</b> 添加 API Key,或开启演示模式预览效果。</div>`;
+    return;
+  }
+  wrap.innerHTML = list.map(acct => {
+    const st = accountsState.get(acct.id) || { status: 'load' };
+    return `<div class="card" id="card-${acct.id}">${cardHtml(acct, st)}</div>`;
+  }).join('');
+  // 触发条形动画
+  requestAnimationFrame(() => {
+    wrap.querySelectorAll('.bar-fill[data-w]').forEach(el => el.style.width = el.dataset.w + '%');
+  });
+  updateFooter();
+}
+
+function patchCard(acct) {
+  const el = $('#card-' + acct.id);
+  if (!el) return renderAll();
+  const st = accountsState.get(acct.id) || { status: 'load' };
+  el.innerHTML = cardHtml(acct, st);
+  requestAnimationFrame(() => {
+    el.querySelectorAll('.bar-fill[data-w]').forEach(b => b.style.width = b.dataset.w + '%');
+  });
+}
+
+function currentAccounts() {
+  if (config.accounts.length) return config.accounts;
+  if (config.demo) return demoAccounts();
+  return [];
+}
+function demoAccounts() {
+  return [
+    { id: 'demo-lite', label: '个人账号 · Lite', demo: true },
+    { id: 'demo-pro',  label: '工作账号 · Pro',  demo: true },
+    { id: 'demo-max',  label: '团队账号 · Max',  demo: true },
+  ];
+}
+
+function updateFooter() {
+  const n = currentAccounts().length;
+  const next = Math.min(...[...accountsState.values()].map(s => s.nextRefreshAt || Infinity));
+  $('#footLeft').textContent = `共 ${n} 个账号` +
+    (Number.isFinite(next) ? ` · 下次自动刷新 ${fmtCountdown(next - Date.now())}` : '');
+}
+
+/* ================= 刷新逻辑 ================= */
+
+async function refreshAccount(acct) {
+  const st = { status: 'load', updatedAt: null };
+  accountsState.set(acct.id, st);
+  patchCard(acct);
+  try {
+    const plat = PLATFORMS[acct.platform] || PLATFORMS.zai;
+    const [quota, models] = await Promise.all([
+      apiGet(plat.base, QUOTA_PATH, acct),
+      apiGet(plat.base, MODELS_PATH, acct, timeWindowQuery()).catch(() => null),
+    ]);
+    st.quota = parseQuota(quota);
+    st.models = models ? parseModelUsage(models) : [];
+    st.status = 'ok';
+  } catch (e) {
+    st.status = 'error';
+    st.error = e && e.message ? e.message : String(e);
+  }
+  st.updatedAt = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+  accountsState.set(acct.id, st);
+  patchCard(acct);
+}
+
+async function refreshAll(manual) {
+  const list = currentAccounts();
+  if (!list.length) return;
+  // 清掉已删除账号的残留状态
+  const ids = new Set(list.map(a => a.id));
+  for (const id of [...accountsState.keys()]) {
+    if (!ids.has(id)) accountsState.delete(id);
+  }
+  const nextAt = config.refreshMin > 0 ? Date.now() + config.refreshMin * 60e3 : null;
+  if (manual) $('#refreshBtn').firstElementChild?.classList.add('spin');
+  await Promise.all(list.map(acct => {
+    if (acct.demo) {
+      // demo:每次刷新轻微漂移,模拟真实变化
+      const drift = (Math.random() * 4 - 1.5);
+      const s = demoStateFor(acct, drift);
+      const st = { status: 'ok', quota: s.quota, models: s.models,
+                   updatedAt: new Date().toLocaleTimeString('zh-CN', { hour12: false }), nextRefreshAt: nextAt };
+      accountsState.set(acct.id, st);
+      patchCard(acct);
+      return Promise.resolve();
+    }
+    return refreshAccount(acct).then(() => {
+      const st = accountsState.get(acct.id);
+      if (st) st.nextRefreshAt = nextAt;
+    });
+  }));
+  $('#refreshBtn').firstElementChild?.classList.remove('spin');
+  updateFooter();
+}
+
+function scheduleAuto() {
+  clearInterval(timer);
+  if (config.refreshMin > 0) timer = setInterval(() => refreshAll(false), config.refreshMin * 60e3);
+}
+
+/* 每分钟更新倒计时文案 */
+setInterval(() => {
+  document.querySelectorAll('[data-reset]').forEach(el => {
+    const t = Number(el.dataset.reset);
+    if (t) el.textContent = fmtCountdown(t - Date.now());
+  });
+  updateFooter();
+}, 30e3);
+
+/* ================= 设置面板 ================= */
+
+let draft = null; // 编辑中的配置副本
+
+function openDrawer() {
+  draft = JSON.parse(JSON.stringify(config));
+  renderDrawer();
+  $('#drawer').classList.add('open');
+  $('#mask').classList.add('open');
+}
+function closeDrawer() {
+  $('#drawer').classList.remove('open');
+  $('#mask').classList.remove('open');
+}
+
+function renderDrawer() {
+  const list = $('#acctList');
+  list.innerHTML = draft.accounts.map((a, i) => `
+    <div class="acct">
+      <div class="row2">
+        <div class="field" style="margin:0;"><label>名称</label>
+          <input data-i="${i}" data-k="label" value="${esc(a.label)}" placeholder="如:个人 Pro"></div>
+        <div class="field" style="margin:0;"><label>平台</label>
+          <select data-i="${i}" data-k="platform">
+            ${Object.entries(PLATFORMS).map(([k, v]) =>
+              `<option value="${k}" ${a.platform === k ? 'selected' : ''}>${v.name}</option>`).join('')}
+          </select></div>
+      </div>
+      <div class="row3">
+        <div class="field" style="margin:0;grid-column:1/3;"><label>API Key</label>
+          <input data-i="${i}" data-k="key" type="password" value="${esc(a.key || '')}" placeholder="${a.keyRef ? '已加密保存,粘贴新值可替换' : '粘贴 Coding Plan API Key'}" autocomplete="off"></div>
+        <button class="del" data-del="${i}">删除</button>
+      </div>
+      <div class="row2" style="margin-top:8px;">
+        <div class="field" style="margin:0;"><label>套餐(自动检测)</label>
+          <select data-i="${i}" data-k="plan">
+            <option value="" ${!a.plan ? 'selected' : ''}>自动检测(按接口返回)</option>
+            ${Object.entries(PLAN_PRESETS).map(([k, p]) =>
+              `<option value="${k}" ${a.plan === k ? 'selected' : ''}>GLM Coding ${p.name}</option>`).join('')}
+          </select></div>
+        <div class="field" style="margin:0;"><label>有效期(手动,可选)</label>
+          <input type="date" data-i="${i}" data-k="expireDate" value="${esc(a.expireDate || '')}"></div>
+      </div>
+      <div class="row2" style="margin-top:8px;">
+        <div class="field" style="margin:0;"><label>5h Token 上限(百万,留空按套餐)</label>
+          <input type="number" min="1" step="1" data-i="${i}" data-k="tokenLimit5hM" value="${esc(a.tokenLimit5hM || '')}" placeholder="Lite 27 · Pro 40 · Max 160"></div>
+        <div class="field" style="margin:0;"><label>每周 Token 上限(百万,留空按套餐)</label>
+          <input type="number" min="1" step="1" data-i="${i}" data-k="tokenLimit5wM" value="${esc(a.tokenLimit5wM || '')}" placeholder="Lite 135 · Pro 200 · Max 800"></div>
+      </div>
+      <div class="hint" style="margin:6px 0 0;">Key 状态:${a.keyRef ? `🔒 已加密存储 <code>${esc(a.keyMasked || '')}</code>` : (a.key ? '⚠ 明文暂存,保存后自动加密' : '未填(使用本地注入密钥)')}</div>
+    </div>`).join('');
+
+  list.querySelectorAll('input,select').forEach(el => {
+    el.addEventListener('input', () => {
+      const a = draft.accounts[Number(el.dataset.i)];
+      if (a) a[el.dataset.k] = el.value;
+    });
+  });
+  list.querySelectorAll('[data-del]').forEach(el => {
+    el.addEventListener('click', () => {
+      draft.accounts.splice(Number(el.dataset.del), 1);
+      renderDrawer();
+    });
+  });
+
+  $('#cfgProxy').value = draft.proxyUrl || '';
+  $('#cfgDemo').checked = !!draft.demo;
+}
+
+function setupDrawerEvents() {
+  $('#settingsBtn').onclick = openDrawer;
+  $('#closeDrawer').onclick = closeDrawer;
+  $('#mask').onclick = closeDrawer;
+  $('#cancelCfg').onclick = closeDrawer;
+  $('#addAcct').onclick = () => {
+    draft.accounts.push({ id: genId(), label: '新账号', platform: 'zai', key: '' });
+    renderDrawer();
+  };
+  $('#cfgProxy').addEventListener('input', e => draft.proxyUrl = e.target.value.trim());
+  $('#cfgDemo').addEventListener('change', e => draft.demo = e.target.checked);
+  $('#saveCfg').onclick = async () => {
+    config = draft;
+    config.accounts = config.accounts.filter(a => a.label || a.key || a.keyRef);
+    config.accounts.forEach(a => { if (!a.id) a.id = genId(); });
+    // 明文 Key 自动送入本机加密库(DPAPI),浏览器 localStorage 只保留加密引用
+    let encrypted = 0;
+    for (const a of config.accounts) {
+      if (a.key) {
+        try {
+          const r = await fetch('/key/store', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: a.key }),
+          });
+          const j = await r.json();
+          if (j.ok) { a.keyRef = j.ref; a.keyMasked = j.masked; delete a.key; encrypted++; }
+        } catch (e) { /* 本地服务不可用:保留明文,下次保存再试 */ }
+      }
+    }
+    saveConfig();
+    accountsState.clear();
+    closeDrawer();
+    renderAll();
+    refreshAll(true);
+    toast(encrypted ? `已保存,${encrypted} 个 Key 自动加密` : '设置已保存');
+  };
+}
+
+/* ================= 本地服务密钥管理(网页填写,加密落盘) ================= */
+
+function setupKeyAdmin() {
+  const status = $('#keyStatus'), input = $('#cfgKeyInput'), btn = $('#saveKeyBtn');
+  let keyConfigured = false;
+  async function refreshKeyStatus() {
+    try {
+      const r = await fetch('/key/status');
+      const j = await r.json();
+      keyConfigured = !!j.configured;
+      status.innerHTML = j.configured
+        ? `当前状态:✅ 已设置(<code>${esc(j.masked)}</code>,来源 ${esc(j.source)};留空保存可清除)`
+        : '当前状态:未设置';
+    } catch (e) {
+      status.innerHTML = '状态获取失败:请通过本地服务打开面板(桌面快捷方式)';
+    }
+  }
+  btn.addEventListener('click', async () => {
+    const key = input.value.trim();
+    if (!key && !keyConfigured) { toast('请先粘贴 API Key'); return; }
+    btn.disabled = true;
+    try {
+      const r = await fetch('/key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key }),
+      });
+      const j = await r.json();
+      if (j.ok) {
+        input.value = '';
+        toast(j.cleared ? '已清除本机密钥' : `已加密保存(${j.masked}),正在刷新用量…`);
+        refreshKeyStatus();
+        if (!j.cleared) refreshAll(true);
+      } else {
+        toast('保存失败:' + (j.error || ('HTTP ' + r.status)));
+      }
+    } catch (e) {
+      toast('保存失败:请通过本地服务打开面板(桌面快捷方式)');
+    }
+    btn.disabled = false;
+  });
+  refreshKeyStatus();
+}
+
+/* 启动时自动把 localStorage 里的明文 Key 迁移进本机加密库 */
+async function autoMigrateKeys() {
+  let changed = false;
+  for (const a of config.accounts) {
+    if (a.key) {
+      try {
+        const r = await fetch('/key/store', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: a.key }),
+        });
+        const j = await r.json();
+        if (j.ok) { a.keyRef = j.ref; a.keyMasked = j.masked; delete a.key; changed = true; }
+      } catch (e) { /* 服务不可用时保留明文,下次自动重试 */ }
+    }
+  }
+  if (changed) {
+    saveConfig();
+    toast('检测到明文 Key,已自动加密存储');
+  }
+}
+
+/* ================= 启动 ================= */
+
+function init() {
+  $('#refreshSel').value = String(config.refreshMin || 0);
+  $('#refreshSel').addEventListener('change', e => {
+    config.refreshMin = Number(e.target.value);
+    saveConfig();
+    scheduleAuto();
+    toast(config.refreshMin > 0 ? `已切换为每 ${config.refreshMin} 分钟刷新` : '已切换为手动刷新');
+  });
+  $('#refreshBtn').innerHTML = '<span>⟳</span> 刷新';
+  $('#refreshBtn').onclick = () => refreshAll(true);
+  setupDrawerEvents();
+  setupKeyAdmin();
+  autoMigrateKeys();
+  renderAll();
+  refreshAll(true);
+  scheduleAuto();
+}
+
+init();
+</script>
+</body>
+</html>

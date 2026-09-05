@@ -1,0 +1,4 @@
+# 把你的 Z.ai Coding Plan API Key 粘贴到下一个非注释行(整行就是一个 Key)
+# 获取入口:https://z.ai/manage-apikey/apikey-list (全球站)
+#          https://bigmodel.cn/console/usercenter-apikeys (国内站;同时把面板设置里的平台选为"智谱国内站")
+# 保存本文件后,回到面板点一次"刷新"即可看到真实用量。
