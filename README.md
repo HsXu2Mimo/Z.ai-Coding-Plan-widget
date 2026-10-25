@@ -1,11 +1,3 @@
-# Z.ai-Coding-Plan-
-基于 Z.ai 创造的 Z.ai Coding Plan 用量面板
-
-<img width="1222" height="515" alt="image" src="https://github.com/user-attachments/assets/e04fae08-67d8-4bac-8e16-56bbcf7892c3" />
-<img width="395" height="977" alt="image" src="https://github.com/user-attachments/assets/887c0ae0-9475-4d13-86b5-d68808d146fe" />
-
-
-[README.md](https://github.com/user-attachments/files/31863977/README.md)
 # Z.ai Coding Plan 用量面板
 
 一个零依赖的单文件网页 widget,实时显示不同 **Z.ai / 智谱 GLM Coding Plan**(Lite / Pro / Max,支持多账号、全球站与国内站)的用量情况。
